@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Bundle Scanner",
+  "version": "1.61",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": ["https://*.helius-rpc.com/*", "https://trade.padre.gg/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://dexscreener.com/*",
+        "https://bullx.io/*",
+        "https://trade.padre.gg/*",
+        "https://pump.fun/*"
+      ],
+      "js": ["content.js"],
+      "css": ["styles.css"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["config.json"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
