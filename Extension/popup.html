@@ -2,8 +2,8 @@
 <html>
 <head>
     <style>
-        body { width: 200px; padding: 15px; background: #0c0c0c; color: white; font-family: sans-serif; }
-        .box { background: #141414; border: 1px solid #222; padding: 12px; border-radius: 10px; }
+        body { width: 220px; padding: 15px; background: #0c0c0c; color: white; font-family: sans-serif; }
+        .box { background: #141414; border: 1px solid #222; padding: 12px; border-radius: 10px; margin-bottom: 10px; }
         .title { font-size: 10px; font-weight: 800; color: #555; text-transform: uppercase; margin-bottom: 15px; }
         .label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; }
         .val { color: #00ff88; font-weight: 800; }
@@ -16,6 +16,16 @@
             appearance: none; width: 12px; height: 12px; background: #00ff88; border-radius: 50%;
         }
         
+        select {
+            width: 100%; padding: 8px; background: #222; color: white;
+            border: 1px solid #333; border-radius: 6px; font-size: 11px;
+            cursor: pointer; margin-top: 8px;
+        }
+        
+        .method-desc {
+            font-size: 9px; color: #666; margin-top: 8px; line-height: 1.4;
+        }
+        
         button { 
             width: 100%; padding: 8px; background: #00ff88; color: black;
             border: none; font-weight: 800; cursor: pointer; border-radius: 6px; 
@@ -25,14 +35,27 @@
 </head>
 <body>
     <div class="box">
-        <div class="title">Bundle Scanner</div>
+        <div class="title">Detection Method</div>
+        <select id="methodSelect">
+            <option value="fresh">Fresh Wallet Method</option>
+            <option value="funded">Funded Time Method</option>
+        </select>
+        <div class="method-desc" id="methodDesc">
+            Checks for wallets with less than 5 transactions
+        </div>
+    </div>
+    
+    <div class="box">
+        <div class="title">Notification</div>
         <div class="label">
             <span>Duration:</span>
             <span id="tVal" class="val">5s</span>
         </div>
         <input type="range" id="timerInput" min="3" max="10" value="5" step="1">
-        <button id="saveBtn">APPLY CHANGES</button>
     </div>
+    
+    <button id="saveBtn">APPLY CHANGES</button>
+    
     <script src="popup.js"></script>
 </body>
 </html>

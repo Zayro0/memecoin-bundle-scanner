@@ -1,15 +1,23 @@
 let lastMint = "";
 let displayTime = 5;
+let detectionMethod = "fresh";
 
 console.log("[Bundle Scanner] Content script loaded");
 console.log("[Bundle Scanner] Current URL:", window.location.href);
 
-chrome.storage.local.get(['ui_timer'], (res) => { 
+chrome.storage.local.get(['ui_timer', 'detection_method'], (res) => { 
     if(res.ui_timer) {
         displayTime = res.ui_timer;
         console.log("[Bundle Scanner] Loaded display time:", displayTime + "s");
     } else {
         console.log("[Bundle Scanner] No saved timer, using default:", displayTime + "s");
+    }
+    
+    if(res.detection_method) {
+        detectionMethod = res.detection_method;
+        console.log("[Bundle Scanner] Loaded detection method:", detectionMethod);
+    } else {
+        console.log("[Bundle Scanner] No saved method, using default:", detectionMethod);
     }
 });
 
@@ -18,13 +26,17 @@ chrome.storage.onChanged.addListener((changes) => {
         displayTime = changes.ui_timer.newValue;
         console.log("[Bundle Scanner] Display time updated to:", displayTime + "s");
     }
+    if (changes.detection_method) {
+        detectionMethod = changes.detection_method.newValue;
+        console.log("[Bundle Scanner] Detection method updated to:", detectionMethod);
+    }
 });
 
 const VERSION = chrome.runtime.getManifest().version;
 console.log("[Bundle Scanner] Extension version:", VERSION);
 
 function updateUI(data) {
-    console.log("[Bundle Scanner] Updating UI - Score:", data.score, "Fresh Wallets:", data.freshWallets);
+    console.log("[Bundle Scanner] Updating UI - Score:", data.score, "Suspicious Wallets:", data.freshWallets);
     
     let ui = document.getElementById("bundle-scanner-ui");
     if (!ui) {
@@ -35,8 +47,12 @@ function updateUI(data) {
     }
 
     const score = parseFloat(data.score) || 0;
-    const color = score > 40 ? "#ff4444" : score > 15 ? "#ffbb00" : "#00ff88";
+    const color = score > 70 ? "#ff4444" : score > 30 ? "#ffbb00" : "#00ff88";
     const warning = data.veryNew ? '<div style="background: #ff4444; padding: 4px 8px; margin-top: 8px; border-radius: 4px; font-size: 9px; font-weight: 800; text-align: center;">⚠ VERY NEW TOKEN</div>' : '';
+    
+    const labelText = data.method === "funded" ? "Clustered:" : "Fresh Wallets:";
+    const methodBadge = data.method === "funded" && data.timeWindow ? 
+        `<div style="font-size:8px; color:#666; margin-top:4px;">Within ${data.timeWindow}h window</div>` : '';
 
     ui.style.cssText = `
         position: fixed !important;
@@ -60,8 +76,9 @@ function updateUI(data) {
             <div style="font-size:22px; font-weight:900;">${score}%</div>
             <div style="font-size:10px; color:#666; margin-bottom:8px;">Bundle Probability</div>
             <div style="font-size:10px; border-top:1px solid #222; padding-top:8px; display:flex; justify-content:space-between;">
-                <span style="color:#666">Fresh Wallets:</span><span>${data.freshWallets}/${data.totalChecked || 15}</span>
+                <span style="color:#666">${labelText}</span><span>${data.freshWallets}/${data.totalChecked || 15}</span>
             </div>
+            ${methodBadge}
             ${warning}
         </div>
     `;
@@ -149,13 +166,13 @@ function scan() {
     console.log("[Bundle Scanner] New mint detected:", mint);
     lastMint = mint;
     
-    chrome.runtime.sendMessage({ type: "SCAN_MINT", mint }, (res) => {
+    chrome.runtime.sendMessage({ type: "SCAN_MINT", mint, method: detectionMethod }, (res) => {
         if (chrome.runtime.lastError) {
             console.error("[Bundle Scanner] Runtime error:", chrome.runtime.lastError.message);
             console.log("[Bundle Scanner] Service worker may be inactive, retrying...");
             
             setTimeout(() => {
-                chrome.runtime.sendMessage({ type: "SCAN_MINT", mint }, (retryRes) => {
+                chrome.runtime.sendMessage({ type: "SCAN_MINT", mint, method: detectionMethod }, (retryRes) => {
                     if (chrome.runtime.lastError) {
                         showErrorUI("Connection failed");
                         return;
