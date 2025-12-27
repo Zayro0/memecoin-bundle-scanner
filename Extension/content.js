@@ -56,7 +56,6 @@ function updateUI(data) {
         `<div style="font-size:8px; color:#666; margin-top:4px;">Within ${data.timeWindow}h window</div>` : '';
 
     ui.style.cssText = `
-        all: initial !important;
         position: fixed !important;
         top: 20px !important;
         right: 20px !important;
@@ -69,6 +68,7 @@ function updateUI(data) {
         min-width: 170px !important;
         max-width: 170px !important;
         height: auto !important;
+        box-sizing: border-box !important;
     `;
     
     ui.innerHTML = `
@@ -114,7 +114,6 @@ function showLoadingUI() {
     }
 
     ui.style.cssText = `
-        all: initial !important;
         position: fixed !important;
         top: 20px !important;
         right: 20px !important;
@@ -127,6 +126,7 @@ function showLoadingUI() {
         min-width: 170px !important;
         max-width: 170px !important;
         height: auto !important;
+        box-sizing: border-box !important;
     `;
     
     ui.innerHTML = `
@@ -164,7 +164,6 @@ function showErrorUI(errorMsg) {
     }
 
     ui.style.cssText = `
-        all: initial !important;
         position: fixed !important;
         top: 20px !important;
         right: 20px !important;
@@ -177,6 +176,7 @@ function showErrorUI(errorMsg) {
         min-width: 170px !important;
         max-width: 170px !important;
         height: auto !important;
+        box-sizing: border-box !important;
     `;
     
     ui.innerHTML = `
