@@ -21,8 +21,7 @@
         "https://gmgn.ai/*",
         "https://www.sniper.xyz/*"
       ],
-      "js": ["content.js"],
-      "css": ["styles.css"]
+      "js": ["content.js"]
     }
   ],
   "web_accessible_resources": [

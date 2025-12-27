@@ -56,6 +56,7 @@ function updateUI(data) {
         `<div style="font-size:8px; color:#666; margin-top:4px;">Within ${data.timeWindow}h window</div>` : '';
 
     ui.style.cssText = `
+        all: initial !important;
         position: fixed !important;
         top: 20px !important;
         right: 20px !important;
@@ -64,12 +65,16 @@ function updateUI(data) {
         opacity: 1 !important;
         transform: translateX(0) !important;
         transition: none !important;
+        width: 170px !important;
+        min-width: 170px !important;
+        max-width: 170px !important;
+        height: auto !important;
     `;
     
     ui.innerHTML = `
-        <div style="background: #121212; border: 1px solid rgba(255,255,255,0.1); border-left: 3px solid ${color};
-            padding: 12px 16px; border-radius: 8px; width: 170px;
-            color: white; font-family: sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <div style="all: initial; box-sizing: border-box !important; background: #121212; border: 1px solid rgba(255,255,255,0.1); border-left: 3px solid ${color};
+            padding: 12px 16px; border-radius: 8px; width: 170px !important; min-width: 170px !important; max-width: 170px !important;
+            color: white; font-family: sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: block;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                 <span style="font-size:9px; font-weight:800; color:${color}; text-transform:uppercase;">${score > 40 ? "HIGH RISK" : "BUNDLE SCAN"}</span>
                 <span style="font-size:8px; opacity:0.3;">v${VERSION}</span>
@@ -109,6 +114,7 @@ function showLoadingUI() {
     }
 
     ui.style.cssText = `
+        all: initial !important;
         position: fixed !important;
         top: 20px !important;
         right: 20px !important;
@@ -117,12 +123,16 @@ function showLoadingUI() {
         opacity: 1 !important;
         transform: translateX(0) !important;
         transition: none !important;
+        width: 170px !important;
+        min-width: 170px !important;
+        max-width: 170px !important;
+        height: auto !important;
     `;
     
     ui.innerHTML = `
-        <div style="background: #121212; border: 1px solid rgba(255,255,255,0.1); border-left: 3px solid #00ff88;
-            padding: 12px 16px; border-radius: 8px; width: 170px;
-            color: white; font-family: sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <div style="all: initial; box-sizing: border-box !important; background: #121212; border: 1px solid rgba(255,255,255,0.1); border-left: 3px solid #00ff88;
+            padding: 12px 16px; border-radius: 8px; width: 170px !important; min-width: 170px !important; max-width: 170px !important;
+            color: white; font-family: sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: block;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                 <span style="font-size:9px; font-weight:800; color:#00ff88; text-transform:uppercase;">SCANNING</span>
                 <span style="font-size:8px; opacity:0.3;">v${VERSION}</span>
@@ -154,6 +164,7 @@ function showErrorUI(errorMsg) {
     }
 
     ui.style.cssText = `
+        all: initial !important;
         position: fixed !important;
         top: 20px !important;
         right: 20px !important;
@@ -162,12 +173,16 @@ function showErrorUI(errorMsg) {
         opacity: 1 !important;
         transform: translateX(0) !important;
         transition: none !important;
+        width: 170px !important;
+        min-width: 170px !important;
+        max-width: 170px !important;
+        height: auto !important;
     `;
     
     ui.innerHTML = `
-        <div style="background: #121212; border: 1px solid rgba(255,255,255,0.1); border-left: 3px solid #ff4444;
-            padding: 12px 16px; border-radius: 8px; width: 170px;
-            color: white; font-family: sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <div style="all: initial; box-sizing: border-box !important; background: #121212; border: 1px solid rgba(255,255,255,0.1); border-left: 3px solid #ff4444;
+            padding: 12px 16px; border-radius: 8px; width: 170px !important; min-width: 170px !important; max-width: 170px !important;
+            color: white; font-family: sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: block;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                 <span style="font-size:9px; font-weight:800; color:#ff4444; text-transform:uppercase;">ERROR</span>
                 <span style="font-size:8px; opacity:0.3;">v${VERSION}</span>
@@ -207,22 +222,18 @@ async function scanWithRetry(mint, maxRetries = 3) {
                 );
             });
 
-            // Success case
             if (response && !response.error) {
                 console.log("[Bundle Scanner] Scan successful");
                 return { success: true, data: response };
             }
 
-            // Error case - check if we should retry
             if (response.error) {
                 console.log(`[Bundle Scanner] Scan error (attempt ${attempt + 1}):`, response.error);
                 
-                // Don't retry if it's a configuration error
                 if (response.shouldRetry === false || response.error.includes("API key not configured")) {
                     return { success: false, error: response.error };
                 }
                 
-                // Retry for other errors
                 if (attempt === maxRetries - 1) {
                     return { success: false, error: response.error };
                 }
@@ -230,7 +241,6 @@ async function scanWithRetry(mint, maxRetries = 3) {
         } catch (err) {
             console.error(`[Bundle Scanner] Runtime error (attempt ${attempt + 1}):`, err.message);
             
-            // Retry on runtime errors
             if (attempt === maxRetries - 1) {
                 return { success: false, error: "Connection failed" };
             }
@@ -271,10 +281,8 @@ async function scan() {
     lastMint = mint;
     isScanning = true;
     
-    // Show loading state
     showLoadingUI();
     
-    // Perform scan with intelligent retry
     const result = await scanWithRetry(mint, 3);
     
     isScanning = false;
@@ -282,7 +290,6 @@ async function scan() {
     if (result.success) {
         updateUI(result.data);
     } else {
-        // Only show error for real persistent errors
         showErrorUI(result.error);
     }
 }

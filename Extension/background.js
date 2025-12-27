@@ -3,7 +3,6 @@ let apiKeyLoaded = false;
 
 console.log("[Bundle Scanner] Background service worker started");
 
-// Load Config with retry
 async function loadConfig(retries = 3) {
     for (let i = 0; i < retries; i++) {
         try {
@@ -26,7 +25,6 @@ async function loadConfig(retries = 3) {
 
 loadConfig();
 
-// Keep-alive
 setInterval(() => console.log("[Bundle Scanner] Ping"), 20000);
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -39,7 +37,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 async function handleScanWithRetry(address, method, attempt) {
-    // Wait for API key if not loaded yet (up to 5 seconds)
     if (!apiKeyLoaded) {
         console.log("[Bundle Scanner] API key not ready, waiting...");
         for (let i = 0; i < 10; i++) {
@@ -48,7 +45,6 @@ async function handleScanWithRetry(address, method, attempt) {
         }
     }
     
-    // After waiting, check if we have a valid API key
     if (!apiKeyLoaded || !HELIUS_API_KEY || HELIUS_API_KEY === "YOUR_API_KEY_HERE") {
         return { error: "API key not configured", shouldRetry: false };
     }
@@ -58,7 +54,6 @@ async function handleScanWithRetry(address, method, attempt) {
     } catch (err) {
         console.error(`[Bundle Scanner] Scan attempt ${attempt + 1} failed:`, err);
         
-        // Retry on network errors, but not on data errors
         if (attempt < 2 && (err.message.includes('fetch') || err.message.includes('network'))) {
             await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
             return handleScanWithRetry(address, method, attempt + 1);
