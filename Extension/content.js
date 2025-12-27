@@ -1,6 +1,7 @@
 let lastMint = "";
 let displayTime = 5;
 let detectionMethod = "fresh";
+let isScanning = false;
 
 console.log("[Bundle Scanner] Content script loaded");
 console.log("[Bundle Scanner] Current URL:", window.location.href);
@@ -97,6 +98,51 @@ function updateUI(data) {
     }, displayTime * 1000);
 }
 
+function showLoadingUI() {
+    console.log("[Bundle Scanner] Showing loading state");
+    
+    let ui = document.getElementById("bundle-scanner-ui");
+    if (!ui) {
+        ui = document.createElement("div");
+        ui.id = "bundle-scanner-ui";
+        document.body.appendChild(ui);
+    }
+
+    ui.style.cssText = `
+        position: fixed !important;
+        top: 20px !important;
+        right: 20px !important;
+        z-index: 2147483647 !important;
+        display: block !important;
+        opacity: 1 !important;
+        transform: translateX(0) !important;
+        transition: none !important;
+    `;
+    
+    ui.innerHTML = `
+        <div style="background: #121212; border: 1px solid rgba(255,255,255,0.1); border-left: 3px solid #00ff88;
+            padding: 12px 16px; border-radius: 8px; width: 170px;
+            color: white; font-family: sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <span style="font-size:9px; font-weight:800; color:#00ff88; text-transform:uppercase;">SCANNING</span>
+                <span style="font-size:8px; opacity:0.3;">v${VERSION}</span>
+            </div>
+            <div style="font-size:14px; font-weight:700; margin-bottom:8px;">Analyzing Token...</div>
+            <div style="font-size:10px; color:#666;">
+                <div style="width: 100%; height: 3px; background: #222; border-radius: 2px; overflow: hidden;">
+                    <div style="width: 70%; height: 100%; background: #00ff88; animation: loading 1.5s ease-in-out infinite;"></div>
+                </div>
+            </div>
+        </div>
+        <style>
+            @keyframes loading {
+                0%, 100% { transform: translateX(-100%); }
+                50% { transform: translateX(100%); }
+            }
+        </style>
+    `;
+}
+
 function showErrorUI(errorMsg) {
     console.log("[Bundle Scanner] Showing error UI:", errorMsg);
     
@@ -128,7 +174,6 @@ function showErrorUI(errorMsg) {
             </div>
             <div style="font-size:14px; font-weight:700; margin-bottom:8px;">Scan Failed</div>
             <div style="font-size:10px; color:#666; margin-bottom:8px;">${errorMsg}</div>
-            <div style="font-size:9px; color:#888; text-align:center;">Try refreshing or check another coin</div>
         </div>
     `;
 
@@ -141,7 +186,66 @@ function showErrorUI(errorMsg) {
     }, displayTime * 1000);
 }
 
-function scan() {
+async function scanWithRetry(mint, maxRetries = 3) {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        if (attempt > 0) {
+            console.log(`[Bundle Scanner] Retry attempt ${attempt + 1}/${maxRetries}`);
+            await new Promise(resolve => setTimeout(resolve, 1500 * attempt));
+        }
+
+        try {
+            const response = await new Promise((resolve, reject) => {
+                chrome.runtime.sendMessage(
+                    { type: "SCAN_MINT", mint, method: detectionMethod }, 
+                    (res) => {
+                        if (chrome.runtime.lastError) {
+                            reject(new Error(chrome.runtime.lastError.message));
+                        } else {
+                            resolve(res);
+                        }
+                    }
+                );
+            });
+
+            // Success case
+            if (response && !response.error) {
+                console.log("[Bundle Scanner] Scan successful");
+                return { success: true, data: response };
+            }
+
+            // Error case - check if we should retry
+            if (response.error) {
+                console.log(`[Bundle Scanner] Scan error (attempt ${attempt + 1}):`, response.error);
+                
+                // Don't retry if it's a configuration error
+                if (response.shouldRetry === false || response.error.includes("API key not configured")) {
+                    return { success: false, error: response.error };
+                }
+                
+                // Retry for other errors
+                if (attempt === maxRetries - 1) {
+                    return { success: false, error: response.error };
+                }
+            }
+        } catch (err) {
+            console.error(`[Bundle Scanner] Runtime error (attempt ${attempt + 1}):`, err.message);
+            
+            // Retry on runtime errors
+            if (attempt === maxRetries - 1) {
+                return { success: false, error: "Connection failed" };
+            }
+        }
+    }
+    
+    return { success: false, error: "Scan failed after retries" };
+}
+
+async function scan() {
+    if (isScanning) {
+        console.log("[Bundle Scanner] Scan already in progress, skipping");
+        return;
+    }
+
     const url = window.location.href;
     console.log("[Bundle Scanner] Scanning URL:", url);
     
@@ -165,44 +269,29 @@ function scan() {
 
     console.log("[Bundle Scanner] New mint detected:", mint);
     lastMint = mint;
+    isScanning = true;
     
-    chrome.runtime.sendMessage({ type: "SCAN_MINT", mint, method: detectionMethod }, (res) => {
-        if (chrome.runtime.lastError) {
-            console.error("[Bundle Scanner] Runtime error:", chrome.runtime.lastError.message);
-            console.log("[Bundle Scanner] Service worker may be inactive, retrying...");
-            
-            setTimeout(() => {
-                chrome.runtime.sendMessage({ type: "SCAN_MINT", mint, method: detectionMethod }, (retryRes) => {
-                    if (chrome.runtime.lastError) {
-                        showErrorUI("Connection failed");
-                        return;
-                    }
-                    if (retryRes && !retryRes.error) {
-                        console.log("[Bundle Scanner] Retry successful");
-                        updateUI(retryRes);
-                    } else {
-                        showErrorUI(retryRes?.error || "Scan failed");
-                    }
-                });
-            }, 1000);
-            return;
-        }
-        
-        if (res && !res.error) {
-            console.log("[Bundle Scanner] Scan successful");
-            updateUI(res);
-        } else {
-            console.error("[Bundle Scanner] Scan failed:", res?.error || "Unknown error");
-            showErrorUI(res?.error || "Scan failed");
-        }
-    });
+    // Show loading state
+    showLoadingUI();
+    
+    // Perform scan with intelligent retry
+    const result = await scanWithRetry(mint, 3);
+    
+    isScanning = false;
+    
+    if (result.success) {
+        updateUI(result.data);
+    } else {
+        // Only show error for real persistent errors
+        showErrorUI(result.error);
+    }
 }
 
 console.log("[Bundle Scanner] Setting up initial scan...");
 setTimeout(() => {
     console.log("[Bundle Scanner] Running initial scan");
     scan();
-}, 1500);
+}, 2000);
 
 let lastUrl = location.href;
 setInterval(() => {

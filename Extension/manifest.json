@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Bundle Scanner",
-  "version": "1.65",
+  "version": "1.66",
   "permissions": ["storage", "activeTab"],
   "host_permissions": ["https://*.helius-rpc.com/*", "https://trade.padre.gg/*"],
   "background": {
@@ -16,7 +16,10 @@
         "https://dexscreener.com/*",
         "https://bullx.io/*",
         "https://trade.padre.gg/*",
-        "https://pump.fun/*"
+        "https://pump.fun/*",
+        "https://photon-sol.tinyastro.io/*",
+        "https://gmgn.ai/*",
+        "https://www.sniper.xyz/*"
       ],
       "js": ["content.js"],
       "css": ["styles.css"]

@@ -3,32 +3,70 @@ let apiKeyLoaded = false;
 
 console.log("[Bundle Scanner] Background service worker started");
 
-// Load Config
-fetch(chrome.runtime.getURL('config.json'))
-    .then(response => response.json())
-    .then(config => {
-        HELIUS_API_KEY = config.HELIUS_API_KEY;
-        apiKeyLoaded = true;
-        console.log("[Bundle Scanner] API key loaded.");
-    })
-    .catch(err => console.error("[Bundle Scanner] Config load failed:", err));
+// Load Config with retry
+async function loadConfig(retries = 3) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            const response = await fetch(chrome.runtime.getURL('config.json'));
+            const config = await response.json();
+            HELIUS_API_KEY = config.HELIUS_API_KEY;
+            apiKeyLoaded = true;
+            console.log("[Bundle Scanner] API key loaded successfully");
+            return true;
+        } catch (err) {
+            console.error(`[Bundle Scanner] Config load attempt ${i + 1} failed:`, err);
+            if (i < retries - 1) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
+    }
+    console.error("[Bundle Scanner] Failed to load config after all retries");
+    return false;
+}
+
+loadConfig();
 
 // Keep-alive
 setInterval(() => console.log("[Bundle Scanner] Ping"), 20000);
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === "SCAN_MINT") {
-        if (!apiKeyLoaded || !HELIUS_API_KEY || HELIUS_API_KEY === "YOUR_API_KEY_HERE") {
-            sendResponse({ error: "API key not configured" });
-            return true;
-        }
-
-        handleScan(request.mint, request.method)
+        handleScanWithRetry(request.mint, request.method, 0)
             .then(sendResponse)
-            .catch(err => sendResponse({ error: err.message }));
+            .catch(err => sendResponse({ error: err.message, shouldRetry: false }));
         return true;
     }
 });
+
+async function handleScanWithRetry(address, method, attempt) {
+    // Wait for API key if not loaded yet (up to 5 seconds)
+    if (!apiKeyLoaded) {
+        console.log("[Bundle Scanner] API key not ready, waiting...");
+        for (let i = 0; i < 10; i++) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            if (apiKeyLoaded) break;
+        }
+    }
+    
+    // After waiting, check if we have a valid API key
+    if (!apiKeyLoaded || !HELIUS_API_KEY || HELIUS_API_KEY === "YOUR_API_KEY_HERE") {
+        return { error: "API key not configured", shouldRetry: false };
+    }
+
+    try {
+        return await handleScan(address, method);
+    } catch (err) {
+        console.error(`[Bundle Scanner] Scan attempt ${attempt + 1} failed:`, err);
+        
+        // Retry on network errors, but not on data errors
+        if (attempt < 2 && (err.message.includes('fetch') || err.message.includes('network'))) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+            return handleScanWithRetry(address, method, attempt + 1);
+        }
+        
+        throw err;
+    }
+}
 
 async function handleScan(address, method = "fresh") {
     let mint = address;
@@ -36,7 +74,9 @@ async function handleScan(address, method = "fresh") {
         const dexRes = await fetch(`https://api.dexscreener.com/latest/dex/pairs/solana/${address}`);
         const dexData = await dexRes.json();
         if (dexData.pair?.baseToken) mint = dexData.pair.baseToken.address;
-    } catch (e) { /* ignore */ }
+    } catch (e) { 
+        console.log("[Bundle Scanner] DexScreener lookup failed, using direct address");
+    }
     
     return await analyzeMint(mint, method);
 }
@@ -44,18 +84,25 @@ async function handleScan(address, method = "fresh") {
 async function analyzeMint(mint, method = "fresh") {
     const url = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
     
-    const holdRes = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            jsonrpc: "2.0", id: 1, 
-            method: "getTokenLargestAccounts", 
-            params: [mint] 
-        })
-    });
-    const holdData = await holdRes.json();
+    let holdRes, holdData;
+    try {
+        holdRes = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                jsonrpc: "2.0", id: 1, 
+                method: "getTokenLargestAccounts", 
+                params: [mint] 
+            })
+        });
+        holdData = await holdRes.json();
+    } catch (err) {
+        throw new Error("Network error: Unable to fetch holder data");
+    }
     
-    if (!holdData.result) return { error: "No holder data" };
+    if (!holdData.result || !holdData.result.value || holdData.result.value.length === 0) {
+        throw new Error("No holder data available for this token");
+    }
 
     const allHolders = holdData.result.value;
     const holders = allHolders.slice(0, 15);
@@ -75,10 +122,17 @@ async function analyzeFreshWallets(holders, totalHolders, url) {
                 method: "getSignaturesForAddress",
                 params: [h.address, { limit: 10 }]
             };
-            const res = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+            const res = await fetch(url, { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify(body)
+            });
             const data = await res.json();
             return (data.result && data.result.length < 5) ? 1 : 0;
-        } catch (e) { return 0; }
+        } catch (e) { 
+            console.error("[Bundle Scanner] Error checking wallet:", h.address, e);
+            return 0; 
+        }
     }));
 
     const freshCount = results.reduce((a, b) => a + b, 0);
