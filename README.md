@@ -2,13 +2,29 @@
 
 A Chrome extension that detects bundled tokens on Solana DEXs by analyzing patterns among top holders.
 
+## Supported DEXs
+
+Bundle Scanner automatically activates on the following platforms:
+
+ **DexScreener** | https://dexscreener.com
+ **BullX** | https://bullx.io
+ **Padre** | https://trade.padre.gg
+ **Pump.fun** | https://pump.fun
+ **Photon** | https://photon-sol.tinyastro.io
+ **GMGN** | https://gmgn.ai
+ **Sniper** | https://www.sniper.xyz
+
+The extension automatically detects token addresses on any of these platforms and performs real-time bundle analysis.
+
 ## Features
 
-- Real-time bundle detection on popular Solana DEXs (Padre, DexScreener, BullX, Pump.fun)
+- Real-time bundle detection across 7 major Solana trading platforms
 - **Two bundle detection methods (filterable):**
-  - **Fresh Wallet Method** – detects wallets with very low activity
-  - **Funded Time Method** – detects wallets funded within similar timeframes
+  - **Fresh Wallet Method** — detects wallets with very low activity
+  - **Funded Time Method** — detects wallets funded within similar timeframes
 - Analyzes top 15 token holders
+- Intelligent retry system - no more false "refresh page" errors
+- Loading indicators for better user experience
 - Customizable notification display duration (3–10 seconds)
 - Clean, minimal UI with clear risk indicators
 
@@ -31,10 +47,11 @@ A Chrome extension that detects bundled tokens on Solana DEXs by analyzing patte
 ## How It Works
 
 The extension:
-1. Detects when you visit a token page on a supported DEX
+1. Detects when you visit a token page on any supported DEX
 2. Fetches the top 15 token holders via Helius RPC
 3. Applies one or more bundle detection methods
 4. Calculates a bundle risk score based on detected patterns
+5. Displays results with intelligent retry on temporary failures
 
 ### Bundle Detection Methods
 
@@ -57,3 +74,19 @@ The extension uses a color-coded notification system to indicate bundle risk:
 Click the extension icon to:
 - Adjust notification display duration (3–10 seconds)
 - Toggle between detection methods (Fresh Wallet vs. Funded Time)
+
+## Troubleshooting
+
+- **"API key not configured" error**: Make sure you've added your Helius API key to `config.json`
+- **Extension not activating**: Verify you're on one of the supported DEX platforms listed above
+- **Consistent scan failures**: Check your Helius API rate limits at https://dashboard.helius.dev/
+
+## Privacy & Security
+
+- All scans happen locally in your browser
+- No data is sent to external servers except Helius RPC for blockchain data
+- Your API key is stored locally in the extension
+
+## License
+
+This project is open source and available under the MIT License.
