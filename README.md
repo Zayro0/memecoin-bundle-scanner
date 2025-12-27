@@ -1,107 +1,92 @@
-# 🚀 PATCH 1.66
+# Bundle Scanner Extension
 
-## 📅 Release Date: 2025-12-27
-## 🏷 Version: v1.66
+A Chrome extension that detects bundled tokens on Solana DEXs by analyzing patterns among top holders.
 
-This patch release focuses on **stability improvements** and **expanded platform support**. We've completely rebuilt the error handling system to eliminate false errors and added support for 3 new major trading platforms.
+## Supported DEXs
 
----
+Bundle Scanner automatically activates on the following platforms:
 
-## ✨ What's New
+- **DexScreener** - https://dexscreener.com
+- **BullX** - https://bullx.io
+- **Padre** - https://trade.padre.gg
+- **Pump.fun** - https://pump.fun
+- **Photon** - https://photon-sol.tinyastro.io
+- **GMGN** - https://gmgn.ai
+- **Sniper** - https://www.sniper.xyz
 
-### 🌐 Expanded Platform Support
-Bundle Scanner now works on **7 major Solana DEXs**:
+The extension automatically detects token addresses on any of these platforms and performs real-time bundle analysis.
 
-**New Platforms:**
-- **Photon** (https://photon-sol.tinyastro.io) - Lightning-fast trading interface
-- **GMGN** (https://gmgn.ai) - Advanced analytics and trading platform  
-- **Sniper** (https://www.sniper.xyz) - Professional sniping tools
+## Features
 
-**Existing Platforms:**
-- DexScreener, BullX, Padre, Pump.fun
+- Real-time bundle detection across 7 major Solana trading platforms
+- **Two bundle detection methods (filterable):**
+  - **Fresh Wallet Method** — detects wallets with very low activity
+  - **Funded Time Method** — detects wallets funded within similar timeframes
+- Analyzes top 15 token holders
+- Intelligent retry system - no more false "refresh page" errors
+- Loading indicators for better user experience
+- Customizable notification display duration (3–10 seconds)
+- Clean, minimal UI with clear risk indicators
 
-The extension automatically detects token pages on all these platforms and performs real-time bundle analysis without any configuration needed.
+## Installation
 
-### ⚡ Intelligent Retry System
-- **🔄 Smart Retry Logic**: Automatically retries temporary failures (network issues, timing problems) up to 3 times before showing an error
-- **⏱️ Progressive Delays**: Uses intelligent backoff timing (1.5s → 3s) to give the network time to recover
-- **🎯 Error Classification**: Distinguishes between permanent errors (shows immediately) and temporary issues (retries automatically)
-- **🚫 No More False Errors**: Eliminated the annoying "refresh page" errors that appeared even when scans would succeed
+1. Download or clone this repository
+2. Open `config.json` and replace `YOUR_API_KEY_HERE` with your Helius API key
+3. Open Chrome and go to `chrome://extensions/`
+4. Enable **Developer mode** (top right)
+5. Click **Load unpacked** and select the `Extension` folder
+6. Done! The extension is now active
 
-### 🔧 Background Service Worker Improvements
-- **📦 Config Loading with Retry**: API key loading now retries up to 3 times if the initial load fails
-- **⏳ Startup Grace Period**: Service worker waits up to 5 seconds for API key to load before processing scan requests
-- **🛡️ Race Condition Prevention**: Fixed timing issues where scans happened before the extension was fully initialized
-- **📊 Better Logging**: Enhanced console output for easier debugging and monitoring
+## Getting a Helius API Key
 
-### 🎨 User Experience Enhancements
-- **⏳ Loading Animation**: Shows a smooth "Analyzing Token..." animation while scans are in progress
-- **🔒 Scan Locking**: Prevents duplicate simultaneous scans that could waste API calls
-- **📱 Responsive UI**: Better handling of quick page navigation and tab switching
-- **✨ Cleaner Error Messages**: More specific error messages when real issues occur
+1. Go to https://www.helius.dev/
+2. Sign up for a free account
+3. Create a new API key
+4. Copy the key and paste it into `config.json`
 
----
+## How It Works
 
-## 🛠️ Technical Improvements
+The extension:
+1. Detects when you visit a token page on any supported DEX
+2. Fetches the top 15 token holders via Helius RPC
+3. Applies one or more bundle detection methods
+4. Calculates a bundle risk score based on detected patterns
+5. Displays results with intelligent retry on temporary failures
 
-### Code Quality
-- Refactored retry logic into dedicated `scanWithRetry()` and `handleScanWithRetry()` functions
-- Improved error propagation between content script and background worker
-- Added `isScanning` flag to prevent race conditions
-- Better separation of concerns between UI updates and scan logic
+### Bundle Detection Methods
 
-### Performance
-- Reduced unnecessary API calls through scan deduplication
-- More efficient error recovery with targeted retries
-- Optimized loading state rendering
+- **Fresh Wallet Method** Checks for wallets with **less than 5 total transactions** → High fresh wallet presence = higher bundle risk
 
-### Reliability
-- Fixed race condition during extension startup
-- Improved handling of service worker lifecycle events
-- Better recovery from network interruptions
-- Enhanced compatibility with browser tab restoration
+- **Funded Time Method** Checks if wallets were **funded within similar timeframes** → Similar funding times often indicate coordinated wallet creation
 
----
+### Risk Indicators
 
-## 📊 Platform Compatibility Matrix
+The extension uses a color-coded notification system to indicate bundle risk:
 
-| Platform | Fresh Wallet | Funded Time | Auto-Detect | Notes |
-|----------|--------------|-------------|-------------|-------|
-| DexScreener | ✅ | ✅ | ✅ | Full support |
-| BullX | ✅ | ✅ | ✅ | Full support |
-| Padre | ✅ | ✅ | ✅ | Full support |
-| Pump.fun | ✅ | ✅ | ✅ | Full support |
-| Photon | ✅ | ✅ | ✅ | **NEW** |
-| GMGN | ✅ | ✅ | ✅ | **NEW** |
-| Sniper | ✅ | ✅ | ✅ | **NEW** |
+- **🔴 RED (High Risk)** **Score > 70%** Strong evidence of a bundled launch. A large percentage of top holders are fresh wallets or funded simultaneously.
 
----
+- **🟠 ORANGE (Caution)** **Score 30% - 70%** Common for "graduating" coins or active trader communities. Indicates some fresh wallets, but could be organic snipers or burner wallets (standard for Pump.fun/migrations).
 
-## 📝 Usage Notes
+- **🟢 GREEN (Safe)** **Score < 30%** Top holders are mostly established wallets with long transaction histories. Low probability of a coordinated bundle.
 
-### How to Update
-1. Download the v1.66 source zip from GitHub
-2. Unpack to your extensions folder
-3. Ensure your Helius API key is configured in `config.json`
-4. Go to `chrome://extensions/` and click "Reload" on Bundle Scanner
-5. You're good to go!
+## Settings
 
-### Configuration
-- **API Key**: Still required in `config.json` - get yours free at https://helius.dev
-- **Detection Method**: Choose between Fresh Wallet or Funded Time in the popup
-- **Display Duration**: Adjust notification timing (3-10 seconds) in settings
+Click the extension icon to:
+- Adjust notification display duration (3–10 seconds)
+- Toggle between detection methods (Fresh Wallet vs. Funded Time)
 
-### What Changed for Users
-- **✅ Scans succeed more often** - No more "refresh the page" false alarms
-- **✅ Better feedback** - Loading animations show progress during scans
-- **✅ More platforms** - Works on 3 additional major trading interfaces
-- **✅ Smoother operation** - Faster page load scanning with better timing
+## Troubleshooting
 
----
+- **"API key not configured" error**: Make sure you've added your Helius API key to `config.json`
+- **Extension not activating**: Verify you're on one of the supported DEX platforms listed above
+- **Consistent scan failures**: Check your Helius API rate limits at https://dashboard.helius.dev/
 
-## 🐛 Known Issues
-- None currently reported
+## Privacy & Security
 
----
+- All scans happen locally in your browser
+- No data is sent to external servers except Helius RPC for blockchain data
+- Your API key is stored locally in the extension
 
-**Trade safe, stay informed! 🛡️**
+## License
+
+This project is open source and available under the MIT License.
